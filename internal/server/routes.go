@@ -11,8 +11,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"fluxstream-providers/internal/database"
-	"fluxstream-providers/internal/resolver"
+	"github.com/scythe504/fluxstream-providers/internal/database"
+	"github.com/scythe504/fluxstream-providers/internal/media"
 )
 
 func (s *Server) RegisterRoutes() http.Handler {

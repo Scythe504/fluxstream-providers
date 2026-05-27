@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"fluxstream-providers/internal/server"
+	"github.com/scythe504/fluxstream-providers/internal/server"
 )
 
 func gracefulShutdown(apiServer *http.Server, done chan bool) {

@@ -1,4 +1,4 @@
-module fluxstream-providers
+module github.com/scythe504/fluxstream-providers
 
 go 1.25.7
 
@@ -24,7 +24,7 @@ require (
 )
 
 require (
-	github.com/google/uuid v1.6.0 // indirect
+	github.com/google/uuid v1.6.0
 	github.com/jmoiron/sqlx v1.4.0
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.43.0 // indirect

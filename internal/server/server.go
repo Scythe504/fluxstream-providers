@@ -9,7 +9,7 @@ import (
 
 	_ "github.com/joho/godotenv/autoload"
 
-	"fluxstream-providers/internal/database"
+	"github.com/scythe504/fluxstream-providers/internal/database"
 )
 
 type Server struct {
