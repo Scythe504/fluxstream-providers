@@ -2,56 +2,85 @@ package database
 
 import (
 	"context"
-	"database/sql"
+	"embed"
 	"fmt"
 	"log"
 	"os"
 	"strconv"
 	"time"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
-	_ "github.com/joho/godotenv/autoload"
+	"github.com/jmoiron/sqlx"
+	"github.com/pressly/goose/v3"
+	_ "modernc.org/sqlite"
 )
 
-// Service represents a service that interacts with a database.
-type Service interface {
-	// Health returns a map of health status information.
-	// The keys and values in the map are service-specific.
-	Health() map[string]string
+type Provider struct {
+	ID                  string `db:"id" json:"id"`
+	ProviderName        string `db:"provider_name" json:"provider_name"`
+	ProviderURL         string `db:"provider_url" json:"provider_url"`
+	VerificationPending bool   `db:"verification_pending" json:"verification_pending"`
+	Version             string `db:"version" json:"version"`
+	VerifiedAt          *int64 `db:"verified_at" json:"verified_at,omitempty"`
+	ProviderType        string `db:"provider_type" json:"provider_type"`
+	CreatedAt           int64  `db:"created_at" json:"created_at"`
+}
 
-	// Close terminates the database connection.
-	// It returns an error if the connection cannot be closed.
+type Service interface {
+	Health() map[string]string
 	Close() error
+	GetProvider(ctx context.Context, id string) (*Provider, error)
+	GetProviderByName(ctx context.Context, name string) (*Provider, error)
+	UpsertProvider(ctx context.Context, p *Provider) error
+	ListProviders(ctx context.Context, limit, offset int) ([]Provider, error)
 }
 
 type service struct {
-	db *sql.DB
+	db *sqlx.DB
 }
 
 var (
-	database   = os.Getenv("BLUEPRINT_DB_DATABASE")
-	password   = os.Getenv("BLUEPRINT_DB_PASSWORD")
-	username   = os.Getenv("BLUEPRINT_DB_USERNAME")
-	port       = os.Getenv("BLUEPRINT_DB_PORT")
-	host       = os.Getenv("BLUEPRINT_DB_HOST")
-	schema     = os.Getenv("BLUEPRINT_DB_SCHEMA")
+	dburl      = os.Getenv("BLUEPRINT_DB_URL")
 	dbInstance *service
 )
+
+//go:embed migrations/*.sql
+var embedMigrations embed.FS
 
 func New() Service {
 	// Reuse Connection
 	if dbInstance != nil {
 		return dbInstance
 	}
-	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable&search_path=%s", username, password, host, port, database, schema)
-	db, err := sql.Open("pgx", connStr)
+
+	db, err := sqlx.Open("sqlite", dburl)
 	if err != nil {
+		// This will not be a connection error, but a DSN parse error or
+		// another initialization error.
 		log.Fatal(err)
 	}
+
 	dbInstance = &service{
 		db: db,
 	}
+
+	if err := dbInstance.migrate(); err != nil {
+		log.Fatal(err)
+	}
 	return dbInstance
+}
+
+func (s *service) migrate() error {
+	goose.SetBaseFS(embedMigrations)
+
+	if err := goose.SetDialect("sqlite3"); err != nil {
+		return err
+	}
+
+	if err := goose.Up(s.db.DB, "migrations"); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Health checks the health of the database connection by pinging the database.
@@ -110,6 +139,6 @@ func (s *service) Health() map[string]string {
 // If the connection is successfully closed, it returns nil.
 // If an error occurs while closing the connection, it returns the error.
 func (s *service) Close() error {
-	log.Printf("Disconnected from database: %s", database)
+	log.Printf("Disconnected from database: %s", dburl)
 	return s.db.Close()
 }
