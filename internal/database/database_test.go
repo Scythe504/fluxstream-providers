@@ -68,7 +68,7 @@ func TestProviderCRUD(t *testing.T) {
 	srv := New()
 	ctx := context.Background()
 
-	// 1. Create a dummy provider
+	// Create a dummy provider
 	p := &Provider{
 		ID:                  "test-uuid-1",
 		ProviderName:        "TestAni",

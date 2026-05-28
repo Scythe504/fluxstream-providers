@@ -129,7 +129,7 @@ func (s *Server) upsertProviderHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 1. Check if a provider with this name already exists
+	// Check if a provider with this name already exists
 	existing, err := s.db.GetProviderByName(r.Context(), req.Name)
 	var p *database.Provider
 	if err == nil && existing != nil {
@@ -153,19 +153,19 @@ func (s *Server) upsertProviderHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// 2. Perform DB Upsert
+	// Perform DB Upsert
 	if err := s.db.UpsertProvider(r.Context(), p); err != nil {
 		http.Error(w, fmt.Sprintf("Failed to save provider: %v", err), http.StatusInternalServerError)
 		return
 	}
 
-	// 3. Launch the background verification worker asynchronously
+	// Launch the background verification worker asynchronously
 	go func(prov database.Provider) {
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
 
 		log.Printf("[Verification Worker] Starting verification for provider: %s (%s)...", prov.ProviderName, prov.ProviderURL)
-		version, err := resolver.VerifyProviderURL(ctx, prov.ProviderURL)
+		version, err := media.VerifyProviderURL(ctx, prov.ProviderURL)
 		if err != nil {
 			log.Printf("[Verification Worker] FAILED for %s: %v. Provider remains unverified.", prov.ProviderName, err)
 			return
@@ -184,7 +184,7 @@ func (s *Server) upsertProviderHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}(*p)
 
-	// 4. Return registered/upserted provider details (Accepted state)
+	// Return registered/upserted provider details (Accepted state)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
 	_ = json.NewEncoder(w).Encode(p)

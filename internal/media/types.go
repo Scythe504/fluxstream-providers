@@ -1,4 +1,4 @@
-package resolver
+package media
 
 type MediaType string
 type Status string

@@ -1,4 +1,4 @@
-package resolver
+package media
 
 import (
 	"context"
@@ -27,7 +27,7 @@ func NewVerifier(baseURL string) *Verifier {
 
 // VerifyAll performs validation across all supported provider routes in sequence.
 func (v *Verifier) VerifyAll(ctx context.Context) error {
-	// 1. Verify Trending and fetch a dynamic ID to test detail endpoints
+	// Verify Trending and fetch a dynamic ID to test detail endpoints
 	mediaList, err := v.VerifyTrending(ctx)
 	if err != nil {
 		return fmt.Errorf("trending validation failed: %w", err)
@@ -41,37 +41,37 @@ func (v *Verifier) VerifyAll(ctx context.Context) error {
 		testID = "153518"
 	}
 
-	// 2. Verify Seasonal
+	// Verify Seasonal
 	if err := v.VerifySeasonal(ctx); err != nil {
 		return fmt.Errorf("seasonal validation failed: %w", err)
 	}
 
-	// 3. Verify Search
+	// Verify Search
 	if err := v.VerifySearch(ctx, "Frieren"); err != nil {
 		return fmt.Errorf("search validation failed: %w", err)
 	}
 
-	// 4. Verify Genre
+	// Verify Genre
 	if err := v.VerifyGenre(ctx, "Action"); err != nil {
 		return fmt.Errorf("genre validation failed: %w", err)
 	}
 
-	// 5. Verify Airing
+	// Verify Airing
 	if err := v.VerifyAiring(ctx); err != nil {
 		return fmt.Errorf("airing validation failed: %w", err)
 	}
 
-	// 6. Verify Schedule
+	// Verify Schedule
 	if err := v.VerifySchedule(ctx); err != nil {
 		return fmt.Errorf("schedule validation failed: %w", err)
 	}
 
-	// 7. Verify Media Details
+	// Verify Media Details
 	if err := v.VerifyMediaDetails(ctx, testID); err != nil {
 		return fmt.Errorf("media details validation failed for ID %s: %w", testID, err)
 	}
 
-	// 8. Verify Episodes
+	// Verify Episodes
 	epList, err := v.VerifyEpisodes(ctx, testID)
 	if err != nil {
 		return fmt.Errorf("episodes validation failed for ID %s: %w", testID, err)
@@ -82,12 +82,12 @@ func (v *Verifier) VerifyAll(ctx context.Context) error {
 		testEpNum = epList.Episodes[0].Number
 	}
 
-	// 9. Verify Sources
+	// Verify Sources
 	if err := v.VerifySources(ctx, testID, testEpNum); err != nil {
 		return fmt.Errorf("sources validation failed for ID %s ep %s: %w", testID, testEpNum, err)
 	}
 
-	// 10. Verify Recommendations
+	// Verify Recommendations
 	if err := v.VerifyRecommendations(ctx, testID); err != nil {
 		return fmt.Errorf("recommendations validation failed for ID %s: %w", testID, err)
 	}
@@ -95,7 +95,7 @@ func (v *Verifier) VerifyAll(ctx context.Context) error {
 	return nil
 }
 
-// 1. Trending
+// Trending
 func (v *Verifier) VerifyTrending(ctx context.Context) ([]Media, error) {
 	urlStr := fmt.Sprintf("%s/api/trending", v.BaseURL)
 	var list []Media
@@ -105,49 +105,49 @@ func (v *Verifier) VerifyTrending(ctx context.Context) ([]Media, error) {
 	return list, nil
 }
 
-// 2. Seasonal
+// Seasonal
 func (v *Verifier) VerifySeasonal(ctx context.Context) error {
 	urlStr := fmt.Sprintf("%s/api/seasonal?season=SUMMER&year=2023", v.BaseURL)
 	var list []Media
 	return v.getAndDecode(ctx, urlStr, &list)
 }
 
-// 3. Search
+// Search
 func (v *Verifier) VerifySearch(ctx context.Context, query string) error {
 	urlStr := fmt.Sprintf("%s/api/search?q=%s", v.BaseURL, url.QueryEscape(query))
 	var list []Media
 	return v.getAndDecode(ctx, urlStr, &list)
 }
 
-// 4. Genre
+// Genre
 func (v *Verifier) VerifyGenre(ctx context.Context, genre string) error {
 	urlStr := fmt.Sprintf("%s/api/genre?genre=%s", v.BaseURL, url.QueryEscape(genre))
 	var list []Media
 	return v.getAndDecode(ctx, urlStr, &list)
 }
 
-// 5. Airing
+// Airing
 func (v *Verifier) VerifyAiring(ctx context.Context) error {
 	urlStr := fmt.Sprintf("%s/api/airing", v.BaseURL)
 	var list []Media
 	return v.getAndDecode(ctx, urlStr, &list)
 }
 
-// 6. Schedule
+// Schedule
 func (v *Verifier) VerifySchedule(ctx context.Context) error {
 	urlStr := fmt.Sprintf("%s/api/schedule", v.BaseURL)
 	var list []Episode
 	return v.getAndDecode(ctx, urlStr, &list)
 }
 
-// 7. Details
+// Details
 func (v *Verifier) VerifyMediaDetails(ctx context.Context, id string) error {
 	urlStr := fmt.Sprintf("%s/api/%s", v.BaseURL, id)
 	var m Media
 	return v.getAndDecode(ctx, urlStr, &m)
 }
 
-// 8. Episodes
+// Episodes
 func (v *Verifier) VerifyEpisodes(ctx context.Context, id string) (*EpisodeList, error) {
 	urlStr := fmt.Sprintf("%s/api/%s/episodes", v.BaseURL, id)
 	var el EpisodeList
@@ -157,14 +157,14 @@ func (v *Verifier) VerifyEpisodes(ctx context.Context, id string) (*EpisodeList,
 	return &el, nil
 }
 
-// 9. Sources
+// Sources
 func (v *Verifier) VerifySources(ctx context.Context, id, epNumber string) error {
 	urlStr := fmt.Sprintf("%s/api/%s/episodes/%s/sources", v.BaseURL, id, epNumber)
 	var list []Source
 	return v.getAndDecode(ctx, urlStr, &list)
 }
 
-// 10. Recommendations
+// Recommendations
 func (v *Verifier) VerifyRecommendations(ctx context.Context, id string) error {
 	urlStr := fmt.Sprintf("%s/api/%s/recommendations", v.BaseURL, id)
 	var list []Media
