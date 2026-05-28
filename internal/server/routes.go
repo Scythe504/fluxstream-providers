@@ -161,7 +161,7 @@ func (s *Server) upsertProviderHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Launch the background verification worker asynchronously
 	go func(prov database.Provider) {
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
 
 		log.Printf("[Verification Worker] Starting verification for provider: %s (%s)...", prov.ProviderName, prov.ProviderURL)
