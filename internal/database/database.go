@@ -22,6 +22,7 @@ type Provider struct {
 	Version             string `db:"version" json:"version"`
 	VerifiedAt          *int64 `db:"verified_at" json:"verified_at,omitempty"`
 	ProviderType        string `db:"provider_type" json:"provider_type"`
+	DisableOptional     bool   `db:"disable_optional" json:"disable_optional"`
 	CreatedAt           int64  `db:"created_at" json:"created_at"`
 }
 

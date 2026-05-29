@@ -18,9 +18,6 @@ import (
 func (s *Server) RegisterRoutes() http.Handler {
 	r := mux.NewRouter()
 
-	// Apply CORS middleware
-	r.Use(s.corsMiddleware)
-
 	r.HandleFunc("/", s.HelloWorldHandler)
 	r.HandleFunc("/health", s.healthHandler)
 
@@ -29,17 +26,22 @@ func (s *Server) RegisterRoutes() http.Handler {
 	r.HandleFunc("/api/providers", s.upsertProviderHandler).Methods("POST", "PUT")
 	r.HandleFunc("/api/providers/{id}", s.getProviderHandler).Methods("GET")
 
-	return r
+	return s.corsMiddleware(r)
 }
 
 // CORS middleware
 func (s *Server) corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// CORS Headers
-		w.Header().Set("Access-Control-Allow-Origin", "*") // Wildcard allows all origins
+		origin := r.Header.Get("Origin")
+		if origin != "" {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+		} else {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+		}
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
 		w.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type")
-		w.Header().Set("Access-Control-Allow-Credentials", "false") // Credentials not allowed with wildcard origins
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
 
 		// Handle preflight OPTIONS requests
 		if r.Method == http.MethodOptions {
@@ -74,9 +76,10 @@ func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type UpsertProviderRequest struct {
-	Name string `json:"provider_name"`
-	URL  string `json:"provider_url"`
-	Type string `json:"provider_type"`
+	Name            string `json:"provider_name"`
+	URL             string `json:"provider_url"`
+	Type            string `json:"provider_type"`
+	DisableOptional bool   `json:"disable_optional"`
 }
 
 func (s *Server) getProviderHandler(w http.ResponseWriter, r *http.Request) {
@@ -137,6 +140,7 @@ func (s *Server) upsertProviderHandler(w http.ResponseWriter, r *http.Request) {
 		p = existing
 		p.ProviderURL = req.URL
 		p.ProviderType = req.Type
+		p.DisableOptional = req.DisableOptional
 		p.VerificationPending = true
 		p.VerifiedAt = nil
 	} else {
@@ -149,6 +153,7 @@ func (s *Server) upsertProviderHandler(w http.ResponseWriter, r *http.Request) {
 			Version:             "1.0.0",
 			VerifiedAt:          nil,
 			ProviderType:        req.Type,
+			DisableOptional:     req.DisableOptional,
 			CreatedAt:           time.Now().Unix(),
 		}
 	}
@@ -165,9 +170,14 @@ func (s *Server) upsertProviderHandler(w http.ResponseWriter, r *http.Request) {
 		defer cancel()
 
 		log.Printf("[Verification Worker] Starting verification for provider: %s (%s)...", prov.ProviderName, prov.ProviderURL)
-		version, err := media.VerifyProviderURL(ctx, prov.ProviderURL)
+		version, err := media.VerifyProviderURL(ctx, prov.ProviderURL, prov.DisableOptional)
 		if err != nil {
 			log.Printf("[Verification Worker] FAILED for %s: %v. Provider remains unverified.", prov.ProviderName, err)
+			prov.VerificationPending = false
+			prov.VerifiedAt = nil
+			if err := s.db.UpsertProvider(context.Background(), &prov); err != nil {
+				log.Printf("[Verification Worker] DB Update (failure save) failed for %s: %v", prov.ProviderName, err)
+			}
 			return
 		}
 

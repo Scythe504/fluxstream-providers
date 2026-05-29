@@ -26,24 +26,25 @@ func NewVerifier(baseURL string) *Verifier {
 }
 
 // VerifyAll performs validation across all supported provider routes in sequence.
-func (v *Verifier) VerifyAll(ctx context.Context) error {
-	// Verify Trending and fetch a dynamic ID to test detail endpoints
-	mediaList, err := v.VerifyTrending(ctx)
-	if err != nil {
-		return fmt.Errorf("trending validation failed: %w", err)
-	}
+func (v *Verifier) VerifyAll(ctx context.Context, disableOptional bool) error {
+	var testID string = "153518"
 
-	var testID string
-	if len(mediaList) > 0 {
-		testID = mediaList[0].ID
-	} else {
-		// Fallback to a default ID if trending is empty
-		testID = "153518"
+	// Verify Trending and fetch a dynamic ID to test detail endpoints
+	if !disableOptional {
+		mediaList, err := v.VerifyTrending(ctx)
+		if err != nil {
+			return fmt.Errorf("trending validation failed: %w", err)
+		}
+		if len(mediaList) > 0 {
+			testID = mediaList[0].ID
+		}
 	}
 
 	// Verify Seasonal
-	if err := v.VerifySeasonal(ctx); err != nil {
-		return fmt.Errorf("seasonal validation failed: %w", err)
+	if !disableOptional {
+		if err := v.VerifySeasonal(ctx); err != nil {
+			return fmt.Errorf("seasonal validation failed: %w", err)
+		}
 	}
 
 	// Verify Search
@@ -52,23 +53,31 @@ func (v *Verifier) VerifyAll(ctx context.Context) error {
 	}
 
 	// Verify Genre
-	if err := v.VerifyGenre(ctx, "Action"); err != nil {
-		return fmt.Errorf("genre validation failed: %w", err)
+	if !disableOptional {
+		if err := v.VerifyGenre(ctx, "Action"); err != nil {
+			return fmt.Errorf("genre validation failed: %w", err)
+		}
 	}
 
 	// Verify Airing
-	if err := v.VerifyAiring(ctx); err != nil {
-		return fmt.Errorf("airing validation failed: %w", err)
+	if !disableOptional {
+		if err := v.VerifyAiring(ctx); err != nil {
+			return fmt.Errorf("airing validation failed: %w", err)
+		}
 	}
 
 	// Verify Schedule
-	if err := v.VerifySchedule(ctx); err != nil {
-		return fmt.Errorf("schedule validation failed: %w", err)
+	if !disableOptional {
+		if err := v.VerifySchedule(ctx); err != nil {
+			return fmt.Errorf("schedule validation failed: %w", err)
+		}
 	}
 
 	// Verify Media Details
-	if err := v.VerifyMediaDetails(ctx, testID); err != nil {
-		return fmt.Errorf("media details validation failed for ID %s: %w", testID, err)
+	if !disableOptional {
+		if err := v.VerifyMediaDetails(ctx, testID); err != nil {
+			return fmt.Errorf("media details validation failed for ID %s: %w", testID, err)
+		}
 	}
 
 	// Verify Episodes
@@ -88,14 +97,15 @@ func (v *Verifier) VerifyAll(ctx context.Context) error {
 	}
 
 	// Verify Recommendations
-	if err := v.VerifyRecommendations(ctx, testID); err != nil {
-		return fmt.Errorf("recommendations validation failed for ID %s: %w", testID, err)
+	if !disableOptional {
+		if err := v.VerifyRecommendations(ctx, testID); err != nil {
+			return fmt.Errorf("recommendations validation failed for ID %s: %w", testID, err)
+		}
 	}
 
 	return nil
 }
 
-// Trending
 func (v *Verifier) VerifyTrending(ctx context.Context) ([]Media, error) {
 	urlStr := fmt.Sprintf("%s/api/trending", v.BaseURL)
 	var list []Media
@@ -195,9 +205,9 @@ func (v *Verifier) getAndDecode(ctx context.Context, urlStr string, target any) 
 }
 
 // VerifyProviderURL checks if a provider URL satisfies all type contracts.
-func VerifyProviderURL(ctx context.Context, providerURL string) (string, error) {
+func VerifyProviderURL(ctx context.Context, providerURL string, disableOptional bool) (string, error) {
 	v := NewVerifier(providerURL)
-	if err := v.VerifyAll(ctx); err != nil {
+	if err := v.VerifyAll(ctx, disableOptional); err != nil {
 		return "", err
 	}
 	return "1.0.0", nil
